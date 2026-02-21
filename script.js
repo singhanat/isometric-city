@@ -171,101 +171,54 @@ class IsometricRenderer {
 }
 
 class City {
-    constructor(size) {
-        this.size = size;
+    constructor(data) {
+        this.size = data.size;
         this.grid = [];
-        this.generate();
-    }
 
-    generate() {
-        this.grid = [];
+        // Initialize an empty grid
         for (let x = 0; x < this.size; x++) {
             this.grid[x] = [];
             for (let y = 0; y < this.size; y++) {
-                // Island base shape
-                const isIsland = (x >= 2 && x <= 8 && y >= 2 && y <= 8) || (x === 5 && y === 9);
-                if (isIsland) {
-                    this.grid[x][y] = {
-                        ground: "landscapeTiles_067.png", // Clean flat sand/beige base
-                        road: null,
-                        building: null,
-                        prop: null,
-                        vehicle: null
-                    };
-                } else {
-                    this.grid[x][y] = null;
-                }
+                this.grid[x][y] = null;
             }
         }
 
-        // Road Layout (T-shape)
-        // Horizontal main
-        for (let x = 2; x <= 8; x++) {
-            this.grid[x][4].road = "cityTiles_070.png";
+        // Populate from data
+        if (data.tiles) {
+            for (const tileData of data.tiles) {
+                this.grid[tileData.x][tileData.y] = {
+                    ground: tileData.ground || "landscapeTiles_067.png",
+                    road: tileData.road || null,
+                    building: tileData.building || null,
+                    prop: tileData.prop || null,
+                    vehicle: tileData.vehicle || null
+                };
+            }
         }
-        // Vertical branch
-        for (let y = 5; y <= 9; y++) {
-            this.grid[5][y].road = "cityTiles_019.png";
-        }
-        // Junction
-        this.grid[5][4].road = "cityTiles_033.png";
-
-        // Corners/Ends
-        this.grid[2][4].road = "cityTiles_070.png"; // Straight end
-        this.grid[8][4].road = "cityTiles_070.png"; // Straight end
-
-        // Buildings (Matching Sample precisely)
-        // Top Left Cluster
-        this.grid[2][2].building = "buildingTiles_001.png"; // Beige tall
-        this.grid[2][3].building = "buildingTiles_002.png"; // Beige tall
-        this.grid[3][2].building = "buildingTiles_007.png"; // Red tall
-        this.grid[3][3].building = "buildingTiles_008.png"; // Red tall
-
-        // Mid-Back
-        this.grid[4][2].building = "buildingTiles_044.png"; // Beige small
-        this.grid[5][2].building = "buildingTiles_043.png"; // Grey shop
-        this.grid[6][2].building = "buildingTiles_038.png"; // Green awning shop
-
-        // Modern/Right
-        this.grid[7][2].building = "buildingTiles_011.png"; // Blue modern
-        this.grid[7][3].building = "buildingTiles_012.png"; // Blue modern
-
-        // Foreground Area
-        this.grid[4][5].building = "buildingTiles_010.png"; // Red brick
-        this.grid[4][6].building = "buildingTiles_014.png"; // Modern
-
-        this.grid[6][5].building = "buildingTiles_017.png"; // Beige
-        this.grid[6][6].building = "buildingTiles_005.png"; // Red modern small
-
-        // Props & Details
-        this.grid[7][4].vehicle = "carGreen2_000.png";
-        this.grid[3][4].vehicle = "carRed1_000.png";
-        this.grid[4][4].vehicle = "police_NE.png";
-        this.grid[6][4].vehicle = "ambulance_NE.png";
-        this.grid[5][7].vehicle = "taxi_NE.png";
-
-        // Shrubs
-        this.grid[6][3].prop = "cityDetails_010.png";
-        this.grid[8][5].prop = "cityDetails_010.png";
-        this.grid[8][6].prop = "cityDetails_010.png";
-        this.grid[4][8].prop = "cityDetails_010.png";
-
-        // Specific detail on road branch
-        this.grid[5][5].vehicle = "carSilver1_004.png"; // facing SE
     }
 }
 
 const assets = new AssetManager();
 const canvas = document.getElementById('cityCanvas');
 const renderer = new IsometricRenderer(canvas);
-const citySize = 12; // Slightly larger for padding
-let city = new City(citySize);
+let city = null;
 const loadingOverlay = document.getElementById('loading-overlay');
 
 async function init() {
+    // Load city data first
+    try {
+        const res = await fetch('city.json');
+        const cityData = await res.json();
+        city = new City(cityData);
+    } catch (e) {
+        console.error("Failed to load city.json:", e);
+        // Fallback to empty city if json fails
+        city = new City({ size: 12, tiles: [] });
+    }
+
     window.addEventListener('resize', () => renderer.resize());
     renderer.resize();
-    renderer.resetView(citySize);
+    renderer.resetView(city.size);
 
     const sheets = [
         { name: 'base', xml: 'assets/isometric_tiles-base/landscapeTiles_sheet.xml', img: 'assets/isometric_tiles-base/landscapeTiles_sheet.png' },
@@ -288,17 +241,24 @@ async function init() {
 function render() {
     renderer.clear();
 
+    const tilesToDraw = [];
     for (let x = 0; x < city.size; x++) {
         for (let y = 0; y < city.size; y++) {
-            const tile = city.grid[x][y];
-            if (!tile) continue;
-
-            renderer.drawSprite(assets.getSprite(tile.ground), x, y);
-            if (tile.road) renderer.drawSprite(assets.getSprite(tile.road), x, y);
-            if (tile.prop) renderer.drawSprite(assets.getSprite(tile.prop), x, y);
-            if (tile.vehicle) renderer.drawSprite(assets.getSprite(tile.vehicle), x, y);
-            if (tile.building) renderer.drawSprite(assets.getSprite(tile.building), x, y);
+            if (city.grid[x][y]) {
+                tilesToDraw.push({ x, y, tile: city.grid[x][y] });
+            }
         }
+    }
+
+    // Isometric Z-sorting by depth (x + y)
+    tilesToDraw.sort((a, b) => (a.x + a.y) - (b.x + b.y));
+
+    for (const { x, y, tile } of tilesToDraw) {
+        renderer.drawSprite(assets.getSprite(tile.ground), x, y);
+        if (tile.road) renderer.drawSprite(assets.getSprite(tile.road), x, y);
+        if (tile.prop) renderer.drawSprite(assets.getSprite(tile.prop), x, y);
+        if (tile.vehicle) renderer.drawSprite(assets.getSprite(tile.vehicle), x, y);
+        if (tile.building) renderer.drawSprite(assets.getSprite(tile.building), x, y);
     }
 
     requestAnimationFrame(render);
@@ -312,12 +272,7 @@ renderer.resetView = function (mapSize) {
 };
 
 document.getElementById('resetView').addEventListener('click', (e) => {
-    renderer.resetView(citySize);
-    e.stopPropagation();
-});
-
-document.getElementById('randomize').addEventListener('click', (e) => {
-    city = new City(citySize);
+    if (city) renderer.resetView(city.size);
     e.stopPropagation();
 });
 
