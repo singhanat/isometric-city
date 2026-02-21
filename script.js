@@ -77,36 +77,52 @@ class IsometricRenderer {
     }
 
     setupInteraction() {
+        let isPainting = false;
+
         const handleStart = (e) => {
-            this.isDragging = true;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Middle or right click for dragging, or two-finger touch
+            if (e.button === 1 || e.button === 2 || (e.touches && e.touches.length >= 2)) {
+                this.isDragging = true;
+                document.getElementById('viewport').classList.add('panning');
+            } else if (e.button === 0 || (e.touches && e.touches.length === 1)) {
+                isPainting = true;
+                if (this.onPaint) this.onPaint(clientX, clientY);
+            }
+
             this.lastX = clientX;
             this.lastY = clientY;
         };
 
         const handleMove = (e) => {
-            if (!this.isDragging) return;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            const dx = clientX - this.lastX;
-            const dy = clientY - this.lastY;
-
-            this.offsetX += dx;
-            this.offsetY += dy;
+            if (this.isDragging) {
+                const dx = clientX - this.lastX;
+                const dy = clientY - this.lastY;
+                this.offsetX += dx;
+                this.offsetY += dy;
+            } else if (isPainting) {
+                if (this.onPaint) this.onPaint(clientX, clientY);
+            }
 
             this.lastX = clientX;
             this.lastY = clientY;
         };
 
-        const handleEnd = () => {
+        const handleEnd = (e) => {
             this.isDragging = false;
+            isPainting = false;
+            document.getElementById('viewport').classList.remove('panning');
         };
 
         this.canvas.addEventListener('mousedown', handleStart);
         window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleEnd);
+        this.canvas.addEventListener('contextmenu', e => e.preventDefault()); // Prevent normal right click menu
 
         this.canvas.addEventListener('touchstart', handleStart);
         window.addEventListener('touchmove', handleMove);
@@ -123,14 +139,20 @@ class IsometricRenderer {
     }
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const viewport = document.getElementById('viewport');
+        if (viewport) {
+            this.canvas.width = viewport.clientWidth;
+            this.canvas.height = viewport.clientHeight;
+        } else {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        }
     }
 
     resetView(mapSize) {
-        this.zoom = 0.4; // Zoom out more for the bigger city
+        this.zoom = 0.6;
         this.offsetX = this.canvas.width / 2;
-        this.offsetY = - (this.tileHeight * mapSize * this.zoom) / 4; // Start near the top
+        this.offsetY = 50;
     }
 
     worldToScreen(x, y) {
@@ -138,6 +160,20 @@ class IsometricRenderer {
             x: (x - y) * (this.tileWidth / 2) * this.zoom + this.offsetX,
             y: (x + y) * (this.tileHeight / 2) * this.zoom + this.offsetY
         };
+    }
+
+    screenToGrid(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = clientX - rect.left - this.offsetX;
+        const screenY = clientY - rect.top - this.offsetY;
+
+        const halfW = (this.tileWidth / 2) * this.zoom;
+        const halfH = (this.tileHeight / 2) * this.zoom;
+
+        const gridX = (screenX / halfW + screenY / halfH) / 2;
+        const gridY = (screenY / halfH - screenX / halfW) / 2;
+
+        return { x: Math.round(gridX), y: Math.round(gridY) };
     }
 
     drawSprite(sprite, gridX, gridY, zOffset = 0) {
@@ -204,15 +240,17 @@ const renderer = new IsometricRenderer(canvas);
 let city = null;
 const loadingOverlay = document.getElementById('loading-overlay');
 
+// Map Editor States
+let activeBrush = null;
+let activeCategory = 'base';
+
 async function init() {
-    // Load city data first
     try {
         const res = await fetch('city.json');
         const cityData = await res.json();
         city = new City(cityData);
     } catch (e) {
         console.error("Failed to load city.json:", e);
-        // Fallback to empty city if json fails
         city = new City({ size: 12, tiles: [] });
     }
 
@@ -235,7 +273,122 @@ async function init() {
     loadingOverlay.style.opacity = '0';
     setTimeout(() => loadingOverlay.style.display = 'none', 800);
 
+    setupEditorUI();
+
+    renderer.onPaint = (clientX, clientY) => {
+        if (!city || (!activeBrush && activeBrush !== 'ERASE')) return;
+
+        const gridPos = renderer.screenToGrid(clientX, clientY);
+        const gx = gridPos.x;
+        const gy = gridPos.y;
+
+        if (gx >= 0 && gx < city.size && gy >= 0 && gy < city.size) {
+            // Create cell if missing
+            if (!city.grid[gx]) city.grid[gx] = [];
+            if (!city.grid[gx][gy]) {
+                city.grid[gx][gy] = { ground: null, road: null, building: null, prop: null, vehicle: null };
+            }
+
+            const cell = city.grid[gx][gy];
+
+            if (activeBrush === 'ERASE') {
+                city.grid[gx][gy] = null;
+            } else {
+                if (activeCategory === 'base') cell.ground = activeBrush;
+                else if (activeCategory === 'city') cell.ground = activeBrush; // City roads act as ground
+                else if (activeCategory === 'buildings') cell.building = activeBrush;
+                else if (activeCategory === 'details') cell.prop = activeBrush;
+                else if (activeCategory === 'cars') cell.vehicle = activeBrush;
+            }
+        }
+    };
+
     render();
+}
+
+function setupEditorUI() {
+    function populatePalette(category) {
+        const grid = document.getElementById('asset-list');
+        grid.innerHTML = '';
+        for (const [name, sprite] of assets.sprites.entries()) {
+            if (sprite.sheetName === category) {
+                const div = document.createElement('div');
+                div.className = 'asset-item';
+                if (activeBrush === name) div.classList.add('selected');
+
+                const c = document.createElement('canvas');
+                c.width = sprite.width;
+                c.height = sprite.height;
+                c.getContext('2d').drawImage(sprite.img, sprite.x, sprite.y, sprite.width, sprite.height, 0, 0, sprite.width, sprite.height);
+                div.appendChild(c);
+                div.title = name;
+
+                div.onclick = () => {
+                    activeBrush = name;
+                    activeCategory = category;
+                    document.querySelectorAll('.asset-item').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                };
+                grid.appendChild(div);
+            }
+        }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            populatePalette(btn.dataset.category);
+        };
+    });
+
+    // Initial palette load
+    populatePalette('base');
+
+    document.getElementById('eraseBtn').onclick = () => {
+        activeBrush = 'ERASE';
+        document.querySelectorAll('.asset-item').forEach(el => el.classList.remove('selected'));
+    };
+
+    document.getElementById('saveMapBtn').onclick = async () => {
+        const btn = document.getElementById('saveMapBtn');
+        const origText = btn.innerText;
+        btn.innerText = 'Saving...';
+
+        const cleanTiles = [];
+        for (let x = 0; x < city.size; x++) {
+            for (let y = 0; y < city.size; y++) {
+                if (city.grid[x] && city.grid[x][y]) {
+                    const t = city.grid[x][y];
+                    const cleanT = { x, y };
+                    if (t.ground) cleanT.ground = t.ground;
+                    if (t.road) cleanT.road = t.road;
+                    if (t.building) cleanT.building = t.building;
+                    if (t.prop) cleanT.prop = t.prop;
+                    if (t.vehicle) cleanT.vehicle = t.vehicle;
+                    cleanTiles.push(cleanT);
+                }
+            }
+        }
+
+        try {
+            const res = await fetch('save_map.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ size: city.size, tiles: cleanTiles })
+            });
+            const r = await res.json();
+            btn.innerText = r.status === 'success' ? 'Saved successful!' : 'Error Saving';
+        } catch (e) {
+            btn.innerText = 'Failed request';
+        }
+        setTimeout(() => btn.innerText = origText, 2000);
+    };
+
+    document.getElementById('resetView').addEventListener('click', (e) => {
+        if (city) renderer.resetView(city.size);
+        e.stopPropagation();
+    });
 }
 
 function render() {
@@ -244,13 +397,12 @@ function render() {
     const tilesToDraw = [];
     for (let x = 0; x < city.size; x++) {
         for (let y = 0; y < city.size; y++) {
-            if (city.grid[x][y]) {
+            if (city.grid[x] && city.grid[x][y]) {
                 tilesToDraw.push({ x, y, tile: city.grid[x][y] });
             }
         }
     }
 
-    // Isometric Z-sorting by depth (x + y)
     tilesToDraw.sort((a, b) => (a.x + a.y) - (b.x + b.y));
 
     for (const { x, y, tile } of tilesToDraw) {
@@ -264,16 +416,11 @@ function render() {
     requestAnimationFrame(render);
 }
 
-// Override resetView for diorama look
+// Override resetView for map editor default look
 renderer.resetView = function (mapSize) {
     this.zoom = 1.0;
     this.offsetX = this.canvas.width / 2;
-    this.offsetY = this.canvas.height / 3;
+    this.offsetY = 40;
 };
-
-document.getElementById('resetView').addEventListener('click', (e) => {
-    if (city) renderer.resetView(city.size);
-    e.stopPropagation();
-});
 
 init();
