@@ -149,7 +149,7 @@
     {
       "x": 2,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 2,
@@ -209,7 +209,7 @@
     {
       "x": 3,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 3,
@@ -269,7 +269,7 @@
     {
       "x": 4,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 4,
@@ -314,37 +314,37 @@
     {
       "x": 5,
       "y": 2,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
       "y": 3,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
       "y": 4,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_014.png"
     },
     {
       "x": 5,
       "y": 6,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
       "y": 7,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
       "y": 8,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_009.png"
     },
     {
       "x": 5,
@@ -389,7 +389,7 @@
     {
       "x": 6,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 6,
@@ -449,7 +449,7 @@
     {
       "x": 7,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 7,
@@ -509,7 +509,7 @@
     {
       "x": 8,
       "y": 5,
-      "ground": "landscapeTiles_067.png"
+      "ground": "cityTiles_010.png"
     },
     {
       "x": 8,

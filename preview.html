@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tile Preview</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #333;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .tile {
+            text-align: center;
+            border: 1px solid #555;
+            padding: 10px;
+            background: #444;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>City Tiles Preview</h1>
+    <div id="cityGrid" class="grid"></div>
+    <h1>Landscape Tiles Preview</h1>
+    <div id="landscapeGrid" class="grid"></div>
+
+    <script>
+        async function loadSheet(xmlPath, imgPath, gridId) {
+            const [xmlResponse, img] = await Promise.all([
+                fetch(xmlPath).then(res => res.text()),
+                new Promise(resolve => {
+                    const i = new Image();
+                    i.onload = () => resolve(i);
+                    i.src = imgPath;
+                })
+            ]);
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlResponse, "text/xml");
+            const subTextures = xmlDoc.getElementsByTagName("SubTexture");
+
+            const grid = document.getElementById(gridId);
+
+            for (let st of subTextures) {
+                const name = st.getAttribute("name");
+                const x = parseInt(st.getAttribute("x"));
+                const y = parseInt(st.getAttribute("y"));
+                const w = parseInt(st.getAttribute("width"));
+                const h = parseInt(st.getAttribute("height"));
+
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+
+                const div = document.createElement('div');
+                div.className = 'tile';
+                div.appendChild(canvas);
+                const label = document.createElement('div');
+                label.innerText = name;
+                div.appendChild(label);
+
+                grid.appendChild(div);
+            }
+        }
+
+        loadSheet('assets/isometric_tiles-city/cityTiles_sheet.xml', 'assets/isometric_tiles-city/cityTiles_sheet.png', 'cityGrid');
+        loadSheet('assets/isometric_tiles-base/landscapeTiles_sheet.xml', 'assets/isometric_tiles-base/landscapeTiles_sheet.png', 'landscapeGrid');
+    </script>
+</body>
+
+</html>
