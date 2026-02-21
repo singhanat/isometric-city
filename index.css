@@ -1,0 +1,151 @@
+:root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg: #0f172a;
+    --accent: #10b981;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --panel-bg: rgba(15, 23, 42, 0.8);
+    --panel-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: #5491d1;
+    /* Light blue like the sample */
+    color: var(--text);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#app.immersive {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    cursor: default;
+}
+
+#app.immersive:active {
+    cursor: grabbing;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.8s ease;
+}
+
+.loader {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: rotation 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.floating-controls {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.control-group {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    padding: 0.5rem;
+    border-radius: 1.25rem;
+    display: flex;
+    gap: 0.5rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+}
+
+button {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button svg {
+    opacity: 0.8;
+}
+
+button:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+button#randomize {
+    background: var(--primary);
+}
+
+button#randomize:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.4);
+}
+
+button#randomize:active {
+    transform: translateY(0);
+}
+
+.instructions {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    background: var(--panel-bg);
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--panel-border);
+    opacity: 0.8;
+}
