@@ -165,7 +165,11 @@ class IsometricRenderer {
     screenToGrid(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
         const screenX = clientX - rect.left - this.offsetX;
-        const screenY = clientY - rect.top - this.offsetY;
+
+        // Tiles have a visually raised top surface (33px unzoomed). 
+        // We add this thickness so our mouse picks the top surface instead of the logical floor below it.
+        const tileThickness = 33 * this.zoom;
+        const screenY = clientY - rect.top - this.offsetY + tileThickness;
 
         const halfW = (this.tileWidth / 2) * this.zoom;
         const halfH = (this.tileHeight / 2) * this.zoom;
